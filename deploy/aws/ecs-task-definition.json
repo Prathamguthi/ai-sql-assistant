@@ -1,0 +1,39 @@
+{
+  "_comment": "Template for the BACKEND task. Replace <ACCOUNT_ID>, <REGION>, <TAG>. Duplicate for the frontend (port 8501, env API_URL=http://<backend-alb-dns>, no secrets needed except API_KEY).",
+  "family": "ai-sql-assistant-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ai-sql-assistant-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/ai-sql-assistant-backend:<TAG>",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "DB_PATH", "value": "/app/database/app.db" },
+        { "name": "LLM_PROVIDER", "value": "anthropic" },
+        { "name": "CORS_ORIGINS", "value": "https://<your-frontend-domain>" }
+      ],
+      "secrets": [
+        { "name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:ai-sql-assistant/anthropic-key" },
+        { "name": "API_KEY", "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:ai-sql-assistant/api-key" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""],
+        "interval": 30, "timeout": 5, "retries": 3, "startPeriod": 20
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ai-sql-assistant-backend",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
